@@ -6,7 +6,6 @@ const sharp = require("sharp");
 
 async function isImageLight(filePath) {
   const image = sharp(filePath);
-  console.log(filePath);
   const { data } = await image
     .resize({ width: 100 }) // Resize for performance
     .toColorspace("b-w") // Convert to grayscale

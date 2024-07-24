@@ -1,5 +1,4 @@
 const fs = require("fs");
-const sharp = require("sharp");
 const { join } = require("path");
 const { SaveFile, action } = require("../main");
 
