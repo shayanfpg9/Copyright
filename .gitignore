@@ -1,2 +1,4 @@
 /temp
 /node_modules
+/__tests__/temp
+/__tests__/output
