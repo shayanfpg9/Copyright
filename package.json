@@ -1,0 +1,22 @@
+{
+  "name": "copyright",
+  "version": "1.0.0",
+  "description": "Activate the copyright on images of Rubika channels",
+  "main": "main.js",
+  "scripts": {
+    "test": "jest",
+    "start:dev": "nodemon main.js",
+    "start": "node main.js"
+  },
+  "author": "shayanfpg9",
+  "license": "MIT",
+  "packageManager": "yarn@1.22.22",
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "dependencies": {
+    "chokidar": "^3.6.0",
+    "mime-types": "^2.1.35",
+    "sharp": "^0.33.4"
+  }
+}
