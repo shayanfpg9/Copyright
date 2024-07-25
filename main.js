@@ -36,7 +36,7 @@ async function SaveFile(file) {
   console.log(`Start operation with ${c(path.name, "BGcyan")} photo...`);
 
   try {
-    const image = await sharp(file).png().blur(15).toBuffer();
+    const image = await sharp(file).png().blur(10).toBuffer();
     const metadata = await sharp(file).metadata();
     const size = { width: metadata.width, height: metadata.height };
     const watermarkBuffer = Buffer.from(
