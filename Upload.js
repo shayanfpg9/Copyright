@@ -44,10 +44,11 @@ async function SaveFile(file) {
     const watermarkBuffer = Buffer.from(
       await watermark({ ...size, file }, "@username", "./logos/profile.png")
     );
+    const minWidth = Math.abs(450 - size.width);
 
     const canvas = sharp({
       create: {
-        width: size.width + space,
+        width: size.width + space + minWidth,
         height: size.height + space,
         channels: 4,
         background: { r: 255, g: 255, b: 255, alpha: 1 },
@@ -92,12 +93,12 @@ async function SaveFile(file) {
       .composite([
         {
           input: roundedRec,
-          left: Math.floor(space / 2),
+          left: Math.floor((space + minWidth) / 2),
           top: Math.floor(space / 2),
         },
         {
           input: Buffer.from(`
-            <svg width="${size.width + space}" height="${space / 2}">
+            <svg width="${size.width + space + minWidth}" height="${space / 2}">
               <style type="text/css">
                 @font-face {
                     font-family: '${font}';
@@ -117,7 +118,7 @@ async function SaveFile(file) {
         },
         {
           input: Buffer.from(`
-            <svg width="${size.width + space}" height="${space / 2}">
+            <svg width="${size.width + space + minWidth}" height="${space / 2}">
               <style type="text/css">
                 @font-face {
                     font-family: '${font}';
@@ -137,7 +138,7 @@ async function SaveFile(file) {
         },
         {
           input: Buffer.from(`
-            <svg width="${size.width + space}" height="${space / 2}">
+            <svg width="${size.width + space + minWidth}" height="${space / 2}">
               <style type="text/css">
                 @font-face {
                     font-family: '${font}';
