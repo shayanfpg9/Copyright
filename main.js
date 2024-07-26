@@ -6,6 +6,8 @@ const mime = require("mime-types");
 const { colorize: c } = require("./scripts/colorful");
 const { watermark } = require("./scripts/watermark");
 const moment = require("moment-jalaali");
+const useFont = require("./fonts/useFont");
+const round = require("./scripts/round");
 
 moment.locale("fa");
 moment.loadPersian();
@@ -77,12 +79,79 @@ async function SaveFile(file) {
       ])
       .toBuffer();
 
+    const font = "Archivo";
+    const attrs = `x="50%" font-family="${font}" fill="#031D44" dominant-baseline="middle" text-anchor="middle"`;
+
+    const imageSize = 50;
+    const imageSrc = await round(
+      join(__dirname, "./logos/logo.jpg"),
+      imageSize
+    );
+
     await canvas
       .composite([
         {
           input: roundedRec,
           left: Math.floor(space / 2),
           top: Math.floor(space / 2),
+        },
+        {
+          input: Buffer.from(`
+            <svg width="${size.width + space}" height="${space / 2}">
+              <style type="text/css">
+                @font-face {
+                    font-family: '${font}';
+                    src: url('${useFont(font)}') format('woff');
+                }
+              </style>
+              <text ${attrs} y="50%" font-size="40">
+                  File name
+              </text>
+              <text ${attrs} y="90%" font-size="30">
+                  Creator
+              </text>
+            </svg>
+          `),
+          top: 0,
+          left: 0,
+        },
+        {
+          input: Buffer.from(`
+            <svg width="${size.width + space}" height="${space / 2}">
+              <style type="text/css">
+                @font-face {
+                    font-family: '${font}';
+                    src: url('${useFont(font)}') format('woff');
+                }
+              </style>
+              <text ${attrs} y="50%" font-size="30">
+                  ${moment().format("jYYYY/jMM/jDD")}
+              </text>
+              <text ${attrs} y="90%" font-size="20">
+                  Code
+              </text>
+            </svg>
+          `),
+          top: size.height + space / 2,
+          left: 0,
+        },
+        {
+          input: Buffer.from(`
+            <svg width="${size.width + space}" height="${space / 2}">
+              <style type="text/css">
+                @font-face {
+                    font-family: '${font}';
+                    src: url('${useFont(font)}') format('woff');
+                }
+              </style>
+              <image x="5" y="20%" width="${imageSize}" height="${imageSize}" href="${imageSrc}" />
+              <text x="60" y="60%" font-size="22" font-family="${font}" fill="#031D44">
+                  @shayanfpg9
+              </text>
+            </svg>
+          `),
+          top: size.height + space / 2,
+          left: 0,
         },
       ])
       .toFile(outputPath);
