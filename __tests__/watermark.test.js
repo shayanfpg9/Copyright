@@ -7,6 +7,11 @@ jest.mock("fs", () => ({
   readFileSync: jest.fn().mockReturnValue("font-data"),
 }));
 
+// Mock for reading a round file
+jest.mock("../scripts/round.js", () => {
+  return jest.fn(() => "data:image/png;base64,mockedBase64");
+});
+
 // Test the `isImageLight` function
 describe("isImageLight", () => {
   it("should return true for light images", async () => {
