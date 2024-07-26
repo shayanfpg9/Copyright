@@ -1,6 +1,6 @@
 const fs = require("fs");
 const { join } = require("path");
-const { SaveFile, action } = require("../main");
+const { SaveFile, action } = require("../Upload");
 
 jest.mock("../fonts/useFont", () => {
   return jest.fn(() => "data:font/ttf;base64,mockedBase64");
