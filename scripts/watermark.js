@@ -1,8 +1,8 @@
 const { createCanvas, registerFont } = require("canvas");
 const path = require("path");
 const useFont = require("../fonts/useFont");
-const { readFileSync } = require("fs");
 const sharp = require("sharp");
+const round = require("./round");
 
 async function isImageLight(filePath) {
   const image = sharp(filePath);
@@ -59,8 +59,7 @@ const watermark = async ({ width, height, file }, text, imagePath) => {
   };
 
   // Load the image data as a Base64 string
-  const imageBase64 = readFileSync(imagePath, { encoding: "base64" });
-  const imageSrc = `data:image/png;base64,${imageBase64}`;
+  const imageSrc = await round(imagePath, imageSize);
 
   // SVG Content with image and text pattern
   const svgContent = `
@@ -85,7 +84,7 @@ const watermark = async ({ width, height, file }, text, imagePath) => {
                      y2="${patternSize.height}" stroke="${theme}"
                         stroke-width="1" stroke-dasharray="5, 5" />
 
-                    <image x="${5}"
+                    <image x="5"
                      y="${
                        (patternSize.height + textSize.height) / 2 +
                        padding * 1.5
