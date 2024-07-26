@@ -12,14 +12,8 @@ async function isImageLight(filePath) {
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  const totalPixels = data.length;
-  let totalBrightness = 0;
-
-  for (let i = 0; i < totalPixels; i++) {
-    totalBrightness += data[i];
-  }
-
-  const averageBrightness = totalBrightness / totalPixels;
+  const totalBrightness = data.reduce((total, index) => total + index, 0);
+  const averageBrightness = totalBrightness / data.length;
   return averageBrightness > 127; // Midpoint of grayscale (0-255)
 }
 
