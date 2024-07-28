@@ -41,7 +41,7 @@ wss.on("connection", (ws, req) => {
   // eslint-disable-next-line no-console
   console.log("WebSocket connection established.");
 
-  ws.on("message", async (message) => {
+  ws.on("message", (message) => {
     try {
       const data = JSON.parse(message);
       const mimeType = lookup(data.fileName);
@@ -68,7 +68,7 @@ wss.on("connection", (ws, req) => {
       const filePath = path.join(uploadPath, fileName);
 
       // Save the file to the upload directory
-      fs.writeFile(filePath, buffer, (err) => {
+      fs.writeFile(filePath, buffer, async (err) => {
         if (err) {
           response({
             req,
@@ -80,27 +80,28 @@ wss.on("connection", (ws, req) => {
           return;
         }
 
-        SaveFile(filePath)
-          .then((file, mime) => {
-            fs.unlinkSync(filePath);
-            response({
-              req,
-              status: 201,
-              message: "File uploaded successfully.",
-              data: {
-                file: `data:${mime};base64,${file}`,
-              },
-            }).ws(ws);
-          })
-          .catch((error) => {
-            response({
-              req,
-              error: true,
-              status: error.message === "Type is incorrect." ? 400 : 500,
-              message: "Error in file uploading",
-              data: error,
-            }).ws(ws);
-          });
+        try {
+          const [file, mime] = await SaveFile(filePath);
+          
+          response({
+            req,
+            status: 201,
+            message: "File uploaded successfully.",
+            data: {
+              file: `data:${mime};base64,${file}`,
+            },
+          }).ws(ws);
+        } catch (error) {
+          response({
+            req,
+            error: true,
+            status: error.message === "Invalid file type." ? 400 : 500,
+            message: "Error in file uploading",
+            data: error,
+          }).ws(ws);
+        }
+
+        fs.unlinkSync(filePath);
       });
     } catch (error) {
       response({

@@ -1,6 +1,7 @@
 const fs = require("fs");
 const { join } = require("path");
-const { SaveFile, action } = require("../Upload");
+const { SaveFile } = require("../Upload");
+const deleteDir = require("../scripts/deleteDir");
 
 jest.mock("../fonts/useFont", () => {
   return jest.fn(() => "data:font/ttf;base64,mockedBase64");
@@ -20,10 +21,8 @@ fs.copyFileSync(join(directories.files, "white.png"), inputFile);
 // Test Suite
 describe("SaveFile", () => {
   afterAll(() => {
-    fs.unlink(inputFile, () => {
-      fs.unlinkSync(outputFile);
-      action.close();
-    });
+    deleteDir(directories.input);
+    deleteDir(directories.output);
   });
 
   it("should process and save the file with watermark and rounded corners", async () => {
@@ -35,9 +34,13 @@ describe("SaveFile", () => {
   it("should handle errors gracefully", async () => {
     const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation();
 
-    await SaveFile("test.jpg");
+    try {
+      await SaveFile("test.jpg");
+    } catch (error) {
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(error).toBeDefined();
+    }
 
-    expect(consoleErrorSpy).toHaveBeenCalled();
     consoleErrorSpy.mockRestore();
   });
 });

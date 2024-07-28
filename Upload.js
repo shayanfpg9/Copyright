@@ -28,80 +28,79 @@ if (!fs.existsSync(directories.output)) {
 const corner = 50;
 const space = 150;
 
-const SaveFile = (file) =>
-  new Promise(async (rs, rj) => {
-    const path = parse(file);
-    const outputPath = join(directories.output, path.base.replace(" ", "-"));
-    const mimeType = lookup(file);
+const SaveFile = async (file) => {
+  const path = parse(file);
+  const outputPath = join(directories.output, path.base.replace(" ", "-"));
+  const mimeType = lookup(file);
 
-    try {
-      if (!mimeType || !mimeType.startsWith("image/")) {
-        throw new Error("Type is incorrect.");
-      }
+  try {
+    if (!mimeType || !mimeType.startsWith("image/")) {
+      throw new Error("Type is incorrect.");
+    }
 
-      // eslint-disable-next-line no-console
-      console.log(`Start operation with ${c(path.name, "BGcyan")} photo...`);
+    // eslint-disable-next-line no-console
+    console.log(`Start operation with ${c(path.name, "BGcyan")} photo...`);
 
-      const image = await sharp(file).png().blur(10).toBuffer();
-      const metadata = await sharp(file).metadata();
-      const size = { width: metadata.width, height: metadata.height };
-      const watermarkBuffer = Buffer.from(
-        await watermark({ ...size, file }, "@username", "./logos/profile.png")
-      );
-      const minWidth = Math.abs(450 - size.width);
+    const image = await sharp(file).png().blur(10).toBuffer();
+    const metadata = await sharp(file).metadata();
+    const size = { width: metadata.width, height: metadata.height };
+    const watermarkBuffer = Buffer.from(
+      await watermark({ ...size, file }, "@username", "./logos/profile.png")
+    );
+    const minWidth = Math.abs(450 - size.width);
 
-      const canvas = sharp({
-        create: {
-          width: size.width + space + minWidth,
-          height: size.height + space,
-          channels: 4,
-          background: { r: 255, g: 255, b: 255, alpha: 1 },
+    const canvas = sharp({
+      create: {
+        width: size.width + space + minWidth,
+        height: size.height + space,
+        channels: 4,
+        background: { r: 255, g: 255, b: 255, alpha: 1 },
+      },
+    });
+
+    const roundedRec = await sharp(image)
+      .composite([
+        {
+          input: watermarkBuffer,
+          gravity: "southeast",
+          opacity: 0.8,
         },
-      });
-
-      const roundedRec = await sharp(image)
-        .composite([
-          {
-            input: watermarkBuffer,
-            gravity: "southeast",
-            opacity: 0.8,
-          },
-          {
-            input: Buffer.from(
-              `<svg width="${size.width}" height="${size.height}">
+        {
+          input: Buffer.from(
+            `<svg width="${size.width}" height="${size.height}">
                 <rect x="0" y="0" width="${size.width}" height="${size.height}" rx="${corner}" ry="${corner}" fill="none" stroke="#04395e" stroke-width="20"/>
             </svg>`
-            ),
-          },
-          {
-            input: Buffer.from(
-              `<svg width="${size.width}" height="${size.height}">
+          ),
+        },
+        {
+          input: Buffer.from(
+            `<svg width="${size.width}" height="${size.height}">
                 <rect x="0" y="0" width="${size.width}" height="${size.height}" rx="${corner}" ry="${corner}"/>
             </svg>`
-            ),
-            blend: "dest-in",
-          },
-        ])
-        .toBuffer();
+          ),
+          blend: "dest-in",
+        },
+      ])
+      .toBuffer();
 
-      const font = "Archivo";
-      const attrs = `x="50%" font-family="${font}" fill="#031D44" dominant-baseline="middle" text-anchor="middle"`;
+    const font = "Archivo";
+    const attrs = `x="50%" font-family="${font}" fill="#031D44" dominant-baseline="middle" text-anchor="middle"`;
 
-      const imageSize = 50;
-      const imageSrc = await round(
-        join(__dirname, "./logos/logo.jpg"),
-        imageSize
-      );
+    const imageSize = 50;
+    const imageSrc = await round(
+      join(__dirname, "./logos/logo.jpg"),
+      imageSize
+    );
 
-      await canvas
-        .composite([
-          {
-            input: roundedRec,
-            left: Math.floor((space + minWidth) / 2),
-            top: Math.floor(space / 2),
-          },
-          {
-            input: Buffer.from(`
+    await canvas
+      .composite([
+        {
+          input: roundedRec,
+          left: Math.floor((space + minWidth) / 2),
+          top: Math.floor(space / 2),
+        },
+        {
+          input: Buffer.from(`
             <svg width="${size.width + space + minWidth}" height="${space / 2}">
               <style type="text/css">
                 @font-face {
@@ -117,11 +116,11 @@ const SaveFile = (file) =>
               </text>
             </svg>
           `),
-            top: 0,
-            left: 0,
-          },
-          {
-            input: Buffer.from(`
+          top: 0,
+          left: 0,
+        },
+        {
+          input: Buffer.from(`
             <svg width="${size.width + space + minWidth}" height="${space / 2}">
               <style type="text/css">
                 @font-face {
@@ -137,11 +136,11 @@ const SaveFile = (file) =>
               </text>
             </svg>
           `),
-            top: size.height + space / 2,
-            left: 0,
-          },
-          {
-            input: Buffer.from(`
+          top: size.height + space / 2,
+          left: 0,
+        },
+        {
+          input: Buffer.from(`
             <svg width="${size.width + space + minWidth}" height="${space / 2}">
               <style type="text/css">
                 @font-face {
@@ -155,23 +154,23 @@ const SaveFile = (file) =>
               </text>
             </svg>
           `),
-            top: size.height + space / 2,
-            left: 0,
-          },
-        ])
-        .toFile(outputPath);
+          top: size.height + space / 2,
+          left: 0,
+        },
+      ])
+      .toFile(outputPath);
 
-      // eslint-disable-next-line no-console
-      console.log(c("Processed and saved: ", "green") + outputPath);
-      rs(fs.readFileSync(outputPath, "base64"), mimeType);
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error(`Error processing file "${path.name}":`, error);
-      rj(error);
-    }
-  });
+    // eslint-disable-next-line no-console
+    console.log(c("Processed and saved: ", "green") + outputPath);
+    return [fs.readFileSync(outputPath, "base64"), mimeType];
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(`Error processing file "${path.name}":`, error);
+    throw error;
+  }
+};
 
-// eslint-disable-next-line no-console
+/* eslint-disable */
 if (process.env.JEST_WORKER_ID) {
   console.log = () => {};
   console.error = () => {};
