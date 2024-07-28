@@ -5,6 +5,7 @@ const request = require("supertest");
 const fs = require("fs");
 const { cleanup, app } = require("../main");
 const deleteDir = require("../scripts/deleteDir");
+const directories = require("../scripts/dir");
 
 let ws;
 
@@ -20,7 +21,7 @@ afterAll(() => {
 
   setTimeout(() => {
     if (ws) ws.close();
-    deleteDir(path.join(__dirname, "/output"));
+    deleteDir(directories.output);
   }, 1000);
 });
 
@@ -37,7 +38,7 @@ describe("File Upload WebSocket API", () => {
         expect(response.status).toBe(201);
 
         // Verify the file was saved with an extension
-        const uploadedFiles = fs.readdirSync(path.join(__dirname, "/output"));
+        const uploadedFiles = fs.readdirSync(directories.output);
         const uploadedFile = uploadedFiles.find((file) =>
           file.includes("test")
         );

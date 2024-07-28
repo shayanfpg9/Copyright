@@ -8,8 +8,7 @@ jest.mock("../fonts/useFont", () => {
 });
 
 const directories = {
-  input: join(__dirname, "./temp"),
-  output: join(__dirname, "./output"),
+  ...require("../scripts/dir"),
   files: join(__dirname, "./files"),
 };
 const fileName = `test_${Date.now()}.png`;
