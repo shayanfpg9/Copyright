@@ -1,159 +1,182 @@
-require("dotenv").config();
-const express = require("express");
-const path = require("path");
-const { SaveFile } = require("./Upload");
+const sharp = require("sharp");
 const fs = require("fs");
-const { createServer } = require("http");
-const { Server } = require("ws");
-const response = require("./scripts/response");
-const morgan = require("morgan");
-const { default: Ajv } = require("ajv");
-const { lookup } = require("mime-types");
+const { parse, join } = require("path");
+const { watch } = require("chokidar");
+const mime = require("mime-types");
+const { colorize: c } = require("./scripts/colorful");
+const { watermark } = require("./scripts/watermark");
+const moment = require("moment-jalaali");
+const useFont = require("./fonts/useFont");
+const round = require("./scripts/round");
 
-const app = express();
-const port = process.env.PORT || 3000;
-const server = createServer(app);
-const wss = new Server({ server });
-const ajv = new Ajv();
-const uploadPath = require("./scripts/dir").input;
+moment.locale("fa");
+moment.loadPersian();
 
-// Ensure the upload directory exists
-if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath, { recursive: true });
-  // eslint-disable-next-line no-console
-  console.log(`Upload directory created at: ${uploadPath}`);
+const directories = {
+  input: join(__dirname, "./temp"),
+  output: join(__dirname, "./output"),
+};
+
+if (process.env.JEST_WORKER_ID) {
+  directories.input = join(__dirname, "./__tests__/temp");
+  directories.output = join(__dirname, "./__tests__/output");
 }
 
-app.use(express.json());
+if (!fs.existsSync(directories.output)) {
+  fs.mkdirSync(directories.output, { recursive: true });
+}
 
-const schema = {
-  type: "object",
-  properties: {
-    fileName: { type: "string" },
-    file: { type: "string" },
-    channelId: { type: "string" },
-    title: { type: "string" },
-    creator: { type: "string" },
-    date: { type: "number" },
-  },
-  required: ["fileName", "file", "channelId", "title", "creator", "date"],
-};
+const watcher = watch(directories.input, { persistent: true });
+const corner = 50;
+const space = 150;
 
-wss.on("connection", (ws, req) => {
+async function SaveFile(file) {
+  const path = parse(file);
+  const outputPath = join(directories.output, path.base.replace(" ", "-"));
+
   // eslint-disable-next-line no-console
-  console.log("WebSocket connection established.");
+  console.log(`Start operation with ${c(path.name, "BGcyan")} photo...`);
 
-  ws.on("message", (message) => {
-    try {
-      const data = JSON.parse(message);
-      const mimeType = lookup(data.fileName);
-      const now = Date.now();
+  try {
+    const image = await sharp(file).png().blur(10).toBuffer();
+    const metadata = await sharp(file).metadata();
+    const size = { width: metadata.width, height: metadata.height };
+    const watermarkBuffer = Buffer.from(
+      await watermark({ ...size, file }, "@username", "./logos/profile.png")
+    );
 
-      // Manually validate the data
-      const valid = ajv.validate(schema, data);
+    const canvas = sharp({
+      create: {
+        width: size.width + space,
+        height: size.height + space,
+        channels: 4,
+        background: { r: 255, g: 255, b: 255, alpha: 1 },
+      },
+    });
 
-      if (!valid || !mimeType || !mimeType.startsWith("image/")) {
-        response({
-          req,
-          error: true,
-          status: 400,
-          message: "The request format is invalid",
-          data: ajv.errors,
-        }).ws(ws);
-        return;
-      } else {
-        req.message = data;
-      }
+    const roundedRec = await sharp(image)
+      .composite([
+        {
+          input: watermarkBuffer,
+          gravity: "southeast",
+          opacity: 0.8,
+        },
+        {
+          input: Buffer.from(
+            `<svg width="${size.width}" height="${size.height}">
+                <rect x="0" y="0" width="${size.width}" height="${size.height}" rx="${corner}" ry="${corner}" fill="none" stroke="#04395e" stroke-width="20"/>
+            </svg>`
+          ),
+        },
+        {
+          input: Buffer.from(
+            `<svg width="${size.width}" height="${size.height}">
+                <rect x="0" y="0" width="${size.width}" height="${size.height}" rx="${corner}" ry="${corner}"/>
+            </svg>`
+          ),
+          blend: "dest-in",
+        },
+      ])
+      .toBuffer();
 
-      const buffer = Buffer.from(data.file, "base64");
-      const { ext } = path.parse(data.fileName);
-      const fileName = `${data.date}-${now}${ext}`;
-      const filePath = path.join(uploadPath, fileName);
+    const font = "Archivo";
+    const attrs = `x="50%" font-family="${font}" fill="#031D44" dominant-baseline="middle" text-anchor="middle"`;
 
-      // Save the file to the upload directory
-      fs.writeFile(filePath, buffer, async (err) => {
-        if (err) {
-          response({
-            req,
-            error: true,
-            status: 500,
-            message: "File upload failed.",
-          }).ws(ws);
+    const imageSize = 50;
+    const imageSrc = await round(
+      join(__dirname, "./logos/logo.jpg"),
+      imageSize
+    );
 
-          return;
-        }
+    await canvas
+      .composite([
+        {
+          input: roundedRec,
+          left: Math.floor(space / 2),
+          top: Math.floor(space / 2),
+        },
+        {
+          input: Buffer.from(`
+            <svg width="${size.width + space}" height="${space / 2}">
+              <style type="text/css">
+                @font-face {
+                    font-family: '${font}';
+                    src: url('${useFont(font)}') format('woff');
+                }
+              </style>
+              <text ${attrs} y="50%" font-size="40">
+                  ${path.name.split("-")[0]}
+              </text>
+              <text ${attrs} y="90%" font-size="30">
+                 Created by ${path.name.split("-")[1]}
+              </text>
+            </svg>
+          `),
+          top: 0,
+          left: 0,
+        },
+        {
+          input: Buffer.from(`
+            <svg width="${size.width + space}" height="${space / 2}">
+              <style type="text/css">
+                @font-face {
+                    font-family: '${font}';
+                    src: url('${useFont(font)}') format('woff');
+                }
+              </style>
+              <text ${attrs} y="50%" font-size="30">
+                  ${moment().format("jYYYY/jMM/jDD")}
+              </text>
+              <text ${attrs} y="90%" font-size="20">
+                  License Code
+              </text>
+            </svg>
+          `),
+          top: size.height + space / 2,
+          left: 0,
+        },
+        {
+          input: Buffer.from(`
+            <svg width="${size.width + space}" height="${space / 2}">
+              <style type="text/css">
+                @font-face {
+                    font-family: '${font}';
+                    src: url('${useFont(font)}') format('woff');
+                }
+              </style>
+              <image x="5" y="20%" width="${imageSize}" height="${imageSize}" href="${imageSrc}" />
+              <text x="60" y="60%" font-size="22" font-family="${font}" fill="#031D44">
+                  © Shayan
+              </text>
+            </svg>
+          `),
+          top: size.height + space / 2,
+          left: 0,
+        },
+      ])
+      .toFile(outputPath);
 
-        try {
-          const [file, mime] = await SaveFile(filePath, {
-            ...data,
-            date: now,
-          });
+    // eslint-disable-next-line no-console
+    console.log(c("Processed and saved: ", "green") + outputPath);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(`Error processing file "${path.name}":`, error);
+  }
+}
 
-          response({
-            req,
-            status: 201,
-            message: "File uploaded successfully.",
-            data: {
-              file: `data:${mime};base64,${file}`,
-            },
-          }).ws(ws);
-        } catch (error) {
-          response({
-            req,
-            error: true,
-            status: error.message === "Invalid file type." ? 400 : 500,
-            message: "Error in file uploading",
-            data: error,
-          }).ws(ws);
-        }
-
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      });
-    } catch (error) {
-      response({
-        req,
-        error: true,
-        status: 500,
-        message: "Failed to process upload.",
-        data: error,
-      }).ws(ws);
+const action = watcher
+  .on("add", async (file) => {
+    const mimeType = mime.lookup(file);
+    if (mimeType && mimeType.startsWith("image/")) {
+      // eslint-disable-next-line no-console
+      console.log(c("File added: ", "green") + file);
+      await SaveFile(file);
     }
-  });
-
-  ws.on("close", () => {
-    // eslint-disable-next-line no-console
-    console.log("WebSocket connection closed.");
-  });
-});
-
-app.all("*", (req, res) => {
-  response({ req, error: true, status: 404, message: "Page not found" }).rest(
-    res
-  );
-});
-
-// Start the server
-const connection = server.listen(port, () => {
+  })
   // eslint-disable-next-line no-console
-  console.log(`Server running on port ${port}`);
-});
-
-// Clean up on process exit
-const cleanup = () => {
-  connection.close(() => {
-    // eslint-disable-next-line no-console
-    console.log("Server closed.");
-    wss.clients.forEach((client) => client.terminate());
-  });
-};
-
-process.on("SIGINT", cleanup); // Handle Ctrl+C
-process.on("SIGTERM", cleanup); // Handle termination
-process.on("exit", cleanup); // Handle normal exit
+  .on("error", (error) => console.error(`Watcher error: ${error}`));
 
 // eslint-disable-next-line no-console
-if (process.env.JEST_WORKER_ID) console.log = () => {};
-else app.use(morgan("dev"));
+if (process.env.JEST_WORKER_ID) console.log = () => { };
 
-// Exports for testing
-module.exports = { app, cleanup };
+module.exports = { SaveFile, action };
