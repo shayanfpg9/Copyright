@@ -15,9 +15,7 @@ const port = process.env.PORT || 3000;
 const server = createServer(app);
 const wss = new Server({ server });
 const ajv = new Ajv();
-const uploadPath = !process.env.JEST_WORKER_ID
-  ? path.join(__dirname, "./temp")
-  : path.join(__dirname, "./__tests__/temp");
+const uploadPath = require("./scripts/dir").input;
 
 // Ensure the upload directory exists
 if (!fs.existsSync(uploadPath)) {
@@ -33,8 +31,12 @@ const schema = {
   properties: {
     fileName: { type: "string" },
     file: { type: "string" },
+    channelId: { type: "string" },
+    title: { type: "string" },
+    creator: { type: "string" },
+    date: { type: "number" },
   },
-  required: ["fileName", "file"],
+  required: ["fileName", "file", "channelId", "title", "creator", "date"],
 };
 
 wss.on("connection", (ws, req) => {
@@ -45,6 +47,7 @@ wss.on("connection", (ws, req) => {
     try {
       const data = JSON.parse(message);
       const mimeType = lookup(data.fileName);
+      const now = Date.now();
 
       // Manually validate the data
       const valid = ajv.validate(schema, data);
@@ -63,8 +66,8 @@ wss.on("connection", (ws, req) => {
       }
 
       const buffer = Buffer.from(data.file, "base64");
-      const { ext, name } = path.parse(data.fileName);
-      const fileName = `${name}-${Date.now()}${ext}`;
+      const { ext } = path.parse(data.fileName);
+      const fileName = `${data.date}-${now}${ext}`;
       const filePath = path.join(uploadPath, fileName);
 
       // Save the file to the upload directory
@@ -81,8 +84,11 @@ wss.on("connection", (ws, req) => {
         }
 
         try {
-          const [file, mime] = await SaveFile(filePath);
-          
+          const [file, mime] = await SaveFile(filePath, {
+            ...data,
+            date: now,
+          });
+
           response({
             req,
             status: 201,
@@ -101,7 +107,7 @@ wss.on("connection", (ws, req) => {
           }).ws(ws);
         }
 
-        fs.unlinkSync(filePath);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       });
     } catch (error) {
       response({

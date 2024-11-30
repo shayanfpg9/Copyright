@@ -7,30 +7,25 @@ const moment = require("moment-jalaali");
 const useFont = require("./fonts/useFont");
 const round = require("./scripts/round");
 const { lookup } = require("mime-types");
+const directories = new Object(require("./scripts/dir"));
 
 moment.locale("fa");
 moment.loadPersian();
 
-const directories = {
-  input: join(__dirname, "./temp"),
-  output: join(__dirname, "./output"),
-};
-
-if (process.env.JEST_WORKER_ID) {
-  directories.input = join(__dirname, "./__tests__/temp");
-  directories.output = join(__dirname, "./__tests__/output");
-}
-
-if (!fs.existsSync(directories.output)) {
-  fs.mkdirSync(directories.output, { recursive: true });
-}
-
 const corner = 50;
-const space = 150;
+const space = 200;
 
-const SaveFile = async (file) => {
+const SaveFile = async (file, params) => {
   const path = parse(file);
-  const outputPath = join(directories.output, path.base.replace(" ", "-"));
+  let subfolder = "";
+
+  if (!directories.test) subfolder = "/" + params.channelId;
+
+  const outputPath = join(
+    directories.output,
+    subfolder,
+    path.base.replace(" ", "-")
+  );
   const mimeType = lookup(file);
 
   try {
@@ -41,13 +36,16 @@ const SaveFile = async (file) => {
     // eslint-disable-next-line no-console
     console.log(`Start operation with ${c(path.name, "BGcyan")} photo...`);
 
+    if (!fs.existsSync(directories.output + subfolder))
+      fs.mkdirSync(directories.output + subfolder);
+
     const image = await sharp(file).png().blur(10).toBuffer();
     const metadata = await sharp(file).metadata();
     const size = { width: metadata.width, height: metadata.height };
     const watermarkBuffer = Buffer.from(
       await watermark({ ...size, file }, "@username", "./logos/profile.png")
     );
-    const minWidth = Math.abs(450 - size.width);
+    const minWidth = Math.abs(550 - size.width);
 
     const canvas = sharp({
       create: {
@@ -109,10 +107,10 @@ const SaveFile = async (file) => {
                 }
               </style>
               <text ${attrs} y="50%" font-size="40">
-                  File name
+                  ${params.title}
               </text>
               <text ${attrs} y="90%" font-size="30">
-                  Creator
+                  ${params.creator}
               </text>
             </svg>
           `),
@@ -129,9 +127,9 @@ const SaveFile = async (file) => {
                 }
               </style>
               <text ${attrs} y="50%" font-size="30">
-                  ${moment().format("jYYYY/jMM/jDD")}
+                  ${moment(params.date).format("jYYYY/jMM/jDD hh:mm")}
               </text>
-              <text ${attrs} y="90%" font-size="20">
+              <text ${attrs} y="90%" font-size="30">
                   Code
               </text>
             </svg>
@@ -149,7 +147,7 @@ const SaveFile = async (file) => {
                 }
               </style>
               <image x="5" y="20%" width="${imageSize}" height="${imageSize}" href="${imageSrc}" />
-              <text x="60" y="60%" font-size="22" font-family="${font}" fill="#031D44">
+              <text x="60" y="60%" font-size="30" font-family="${font}" fill="#031D44">
                   @shayanfpg9
               </text>
             </svg>

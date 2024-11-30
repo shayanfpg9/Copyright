@@ -3,7 +3,7 @@ const { join } = require("path");
 
 const directories = {
   input: join(__dirname, "../temp"),
-  output: join(__dirname, "../client/datas/"),
+  output: join(__dirname, "../client/datas/images"),
   test: process.env.JEST_WORKER_ID,
 };
 

@@ -2984,7 +2984,7 @@ node-int64@^0.4.0:
 
 node-pre-gyp@^0.17.0:
   version "0.17.0"
-  resolved "https://registry.npmjs.org/node-pre-gyp/-/node-pre-gyp-0.17.0.tgz"
+  resolved "https://registry.yarnpkg.com/node-pre-gyp/-/node-pre-gyp-0.17.0.tgz#5af3f7b4c3848b5ed00edc3d298ff836daae5f1d"
   integrity sha512-abzZt1hmOjkZez29ppg+5gGqdPLUuJeAEwVPtHYEJgx0qzttCbcKFpxrCQn2HYbwCv2c+7JwH4BgEzFkUGpn4A==
   dependencies:
     detect-libc "^1.0.3"
